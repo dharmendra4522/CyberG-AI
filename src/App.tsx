@@ -7,8 +7,9 @@ import CyberGAI from "./pages/CyberGAI";
 import NotFound from "./pages/NotFound";
 import ScrollProgressIndicator from "./components/ScrollProgressIndicator";
 import VibeChartPage from "@/components/VibeChartPage";
-import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
+// import LoginPage from "./pages/LoginPage";
+// import RegisterPage from "./pages/RegisterPage";
+import Auth from "@/components/AuthSystem";
 
 
 
@@ -27,9 +28,10 @@ const App = () => (
           <Route path="/vibe-chart" element={<VibeChartPage /> } />
           
           {/* login and register routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          {/* <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} /> */}
 
+          <Route path="/auth" element={<Auth />} />
           
           <Route path="*" element={<NotFound />} />
         </Routes>

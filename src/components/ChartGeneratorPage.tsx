@@ -8,6 +8,7 @@ import sheetIconImage from "../assets/googleSheet.png";
 import excelIconImage from "../assets/excel.png";
 import demoVideo from "../assets/demo-video.mp4";
 import VibeChartPage from "./VibeChartPage";
+import Auth from "../pages/Auth";
 // --- Icon Components (Styling updated to match your theme) ---
 const SheetIcon = () => (
   <img src={sheetIconImage} alt="Sheet Icon" className="w-5 h-5 mr-2" />
@@ -201,7 +202,7 @@ function ChartGeneratorPage() {
         title: "Login required",
         description: "Please log in to use this feature.",
       });
-      setTimeout(() => navigate("/login"), 1500);
+      setTimeout(() => navigate("/Auth"), 1500);
     }
   };
 

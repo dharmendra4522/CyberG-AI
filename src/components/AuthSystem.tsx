@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom"; // Redirect ke liye
-import toast from "react-hot-toast"; // Professional messages ke liye
+import { useNavigate, useLocation } from "react-router-dom"; // Redirect ke liye
 // import axios from "axios"; // Real API ke liye
 import {
   Mail,
@@ -12,14 +11,20 @@ import {
   Shield,
   Loader, // Loading ke liye
   ArrowRight,
+  AlertCircle, // Naya: Error icon ke liye
+  CheckCircle2, // Naya: Success icon ke liye
+  Info          // Yeh add karein
 } from "lucide-react";
 
 const AuthSystem = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const location = useLocation();
+  const purposeMessage = location.state?.message; 
   const [isVisible, setIsVisible] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false); // Naya: Loading state
+  const [message, setMessage] = useState({ text: "", type: "" }); // <-- YEH NAYI LINE ADD KAREIN
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -33,7 +38,16 @@ const AuthSystem = () => {
     setIsVisible(true);
   }, []);
 
+  // Purpose message ko initial info banner ke roop me dikhayein
+  useEffect(() => {
+    if (purposeMessage) {
+      setMessage({ text: String(purposeMessage), type: "info" });
+    }
+  }, [purposeMessage]);
+
   const handleInputChange = (field: string, value: string) => {
+    // Agar purpose/info message dikh raha ho to typing par usse hata dein
+    setMessage((prev) => (prev.type === "info" ? { text: "", type: "" } : prev));
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -41,6 +55,31 @@ const AuthSystem = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setMessage({ text: '', type: '' }); // <-- YEH NAYI LINE ADD KAREIN
+
+    // Field validation
+    if (!formData.email || !formData.password) {
+      setMessage({ text: 'Email and password are required.', type: 'error' });
+      setLoading(false);
+      return;
+    }
+
+    if (!isLogin && (!formData.name || !formData.confirmPassword)) {
+      setMessage({
+        text: "Missing Required Fields: Name and confirm password are required",
+        type: "error",
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setMessage({ text: 'Login Successful! Redirecting...', type: 'success' });
+      setLoading(false);
+      return;
+    }
 
     if (isLogin) {
       // --- LOGIN LOGIC ---
@@ -54,7 +93,7 @@ const AuthSystem = () => {
         formData.email === "test@test.com" &&
         formData.password === "password123"
       ) {
-        toast.success("Login Successful! Redirecting...");
+        setMessage({ text: 'Login Successful! Redirecting...', type: 'success' });
 
         // **localStorage mein data save karein**
         localStorage.setItem("accessToken", "DUMMY_REAL_TOKEN_FROM_API");
@@ -65,7 +104,10 @@ const AuthSystem = () => {
 
         setTimeout(() => navigate("/"), 2000); // Homepage par bhejein
       } else {
-        toast.error("Invalid email or password.");
+        setMessage({
+          text: "Login Failed: Invalid email or password. Please check your credentials.",
+          type: "error",
+        });
       }
 
       /* // --- REAL API CALL (LOGIN) ---
@@ -82,7 +124,20 @@ const AuthSystem = () => {
     } else {
       // --- REGISTER LOGIC ---
       if (formData.password !== formData.confirmPassword) {
-        toast.error("Passwords do not match!");
+        setMessage({
+          text: "Password Mismatch: Passwords do not match. Please try again.",
+          type: "error",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Password strength validation
+      if (formData.password.length < 6) {
+        setMessage({
+          text: "Weak Password: Password must be at least 6 characters long.",
+          type: "error",
+        });
         setLoading(false);
         return;
       }
@@ -95,10 +150,18 @@ const AuthSystem = () => {
       await new Promise((res) => setTimeout(res, 1500)); // Nakli network delay
 
       if (formData.email === "test@test.com") {
-        toast.error("This email is already registered.");
+        setMessage({
+          text: "Email Already Exists: This email is already registered. Please use a different email or try signing in.",
+          type: "error",
+        });
       } else {
-        toast.success("Registration successful! Please sign in.");
+        setMessage({
+          text: `Registration Successful! Welcome ${formData.name}. Please sign in to continue.`,
+          type: "success",
+        });
         setIsLogin(true); // User ko login view par bhej do
+        // Clear form data
+        setFormData({ email: "", password: "", confirmPassword: "", name: "" });
       }
 
       /* // --- REAL API CALL (REGISTER) ---
@@ -119,6 +182,7 @@ const AuthSystem = () => {
     setFormData({ email: "", password: "", confirmPassword: "", name: "" });
     setShowPassword(false);
     setShowConfirmPassword(false);
+    setMessage({ text: '', type: '' }); // <-- YEH NAYI LINE ADD KAREIN
   };
 
   // --- AAPKA JSX BILKUL WAISA HI HAI, BAS BUTTON MEIN LOADING STATE ADD KI HAI ---
@@ -126,25 +190,23 @@ const AuthSystem = () => {
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background">
       {/* ... (Aapka poora animated background code yahan waisa hi rahega) ... */}
       <div className="absolute inset-0 overflow-hidden">
-         {/* Animated Mesh Gradient Base */}{" "}
+        {/* Animated Mesh Gradient Base */}{" "}
         <div className="absolute inset-0 animate-mesh-gradient opacity-60" />   
-         {/* Interactive Wave Patterns */}{" "}
+        {/* Interactive Wave Patterns */}{" "}
         <div className="absolute inset-0">
           {" "}
-          <div className="absolute inset-0 bg-wave-pattern animate-wave opacity-30" />
-          {" "}
+          <div className="absolute inset-0 bg-wave-pattern animate-wave opacity-30" />{" "}
           <div
             className="absolute inset-0 bg-wave-pattern animate-wave-reverse opacity-20"
             style={{ animationDelay: "2s" }}
-          />
-          {" "}
+          />{" "}
         </div>
-         {/* Complex Grid System */}  {" "}
+        {/* Complex Grid System */}{" "}
         <div
           className="absolute inset-0 opacity-25 cyber-grid-advanced parallax"
           data-speed="0.3"
         />
-        {/* Dynamic Particle System */}    {" "}
+        {/* Dynamic Particle System */}{" "}
         {Array.from({ length: 20 }).map((_, i) => (
           <div
             key={`auth-particle-${i}`}
@@ -161,7 +223,7 @@ const AuthSystem = () => {
             }}
           />
         ))}
-        {/* Floating Geometric Elements */}   {" "}
+        {/* Floating Geometric Elements */}{" "}
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={`auth-geometry-${i}`}
@@ -179,25 +241,22 @@ const AuthSystem = () => {
             }}
           />
         ))}
-         {/* Dynamic Gradient Orbs */} {" "}
-        <div className="absolute top-10 left-10 w-32 h-32 bg-gradient-radial from-primary/40 via-primary/20 to-transparent rounded-full blur-2xl animate-orb-complex" />
-        {" "}
-        <div className="absolute top-20 right-20 w-28 h-28 bg-gradient-radial from-accent/50 via-accent/25 to-transparent rounded-full blur-xl animate-orb-complex-reverse" />
-        {" "}
+        {/* Dynamic Gradient Orbs */}{" "}
+        <div className="absolute top-10 left-10 w-32 h-32 bg-gradient-radial from-primary/40 via-primary/20 to-transparent rounded-full blur-2xl animate-orb-complex" />{" "}
+        <div className="absolute top-20 right-20 w-28 h-28 bg-gradient-radial from-accent/50 via-accent/25 to-transparent rounded-full blur-xl animate-orb-complex-reverse" />{" "}
         <div
           className="absolute bottom-20 left-20 w-36 h-36 bg-gradient-radial from-secondary/30 via-secondary/15 to-transparent rounded-full blur-3xl animate-orb-complex"
           style={{ animationDelay: "4s" }}
-        />
-        {" "}
+        />{" "}
         <div
           className="absolute bottom-10 right-10 w-32 h-32 bg-gradient-radial from-primary/35 via-primary/20 to-transparent rounded-full blur-2xl animate-orb-complex-reverse"
           style={{ animationDelay: "2s" }}
         />
-         {/* Energy Networks */}{" "}
+        {/* Energy Networks */}{" "}
         <div className="absolute inset-0 opacity-25">
           {" "}
           <svg className="w-full h-full" viewBox="0 0 1200 800">
-           {" "}
+            {" "}
             <defs>
               {" "}
               <linearGradient
@@ -212,38 +271,31 @@ const AuthSystem = () => {
                   offset="0%"
                   stopColor="hsl(var(--primary))"
                   stopOpacity="0"
-                />
-                {" "}
+                />{" "}
                 <stop
                   offset="30%"
                   stopColor="hsl(var(--primary))"
                   stopOpacity="0.9"
-                />
-                {" "}
+                />{" "}
                 <stop
                   offset="70%"
                   stopColor="hsl(var(--accent))"
                   stopOpacity="0.7"
-                />
-               {" "}
+                />{" "}
                 <stop
                   offset="100%"
                   stopColor="hsl(var(--accent))"
                   stopOpacity="0"
-                />
-                {" "}
-              </linearGradient>
-             {" "}
-            </defs>
-           {" "}
+                />{" "}
+              </linearGradient>{" "}
+            </defs>{" "}
             <path
               d="M0,400 Q300,200 600,400 Q900,600 1200,400"
               stroke="url(#auth-energy-gradient-1)"
               strokeWidth="2"
               fill="none"
               className="animate-energy-flow"
-            />
-            {" "}
+            />{" "}
             <path
               d="M0,200 Q400,500 800,200 Q1000,100 1200,300"
               stroke="url(#auth-energy-gradient-1)"
@@ -251,18 +303,14 @@ const AuthSystem = () => {
               fill="none"
               className="animate-energy-flow"
               style={{ animationDelay: "3s" }}
-            />
-           {" "}
-          </svg>
-           {" "}
+            />{" "}
+          </svg>{" "}
         </div>
-         {/* Multi-layer Glow System */}{" "}
-        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-primary/20 via-primary/10 to-transparent animate-glow-wave" />
-        {" "}
+        {/* Multi-layer Glow System */}{" "}
+        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-primary/20 via-primary/10 to-transparent animate-glow-wave" />{" "}
         <div className="absolute bottom-0 right-0 w-full h-32 bg-gradient-to-t from-accent/20 via-accent/10 to-transparent animate-glow-wave-reverse" />
-         {/* Dynamic Background Shifts */}{" "}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 animate-background-shift opacity-80" />
-          {" "}
+        {/* Dynamic Background Shifts */}{" "}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 animate-background-shift opacity-80" />{" "}
       </div>
 
       <div className="relative z-10 w-full max-w-md mx-auto px-6">
@@ -293,6 +341,26 @@ const AuthSystem = () => {
               <div className="absolute inset-0 cyber-dots opacity-20 rounded-2xl" />
             </div>
             <div className="relative p-8">
+              {message.text && (
+                <div
+                  className={`flex items-center p-3 rounded-lg text-center text-sm font-medium mb-6 border ${
+                    message.type === "success"
+                      ? "bg-primary/10 text-primary border-primary/30"
+                      : message.type === "error"
+                      ? "bg-destructive/10 text-destructive border-destructive/30"
+                      : "bg-accent/15 text-accent border-accent/30"
+                  }`}
+                >
+                  {message.type === "success" ? (
+                    <CheckCircle2 className="w-5 h-5 mr-2" />
+                  ) : message.type === "error" ? (
+                    <AlertCircle className="w-5 h-5 mr-2" />
+                  ) : (
+                    <Info className="w-5 h-5 mr-2" />
+                  )}
+                  {message.text}
+                </div>
+              )}
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div
                   className={`transition-all duration-500 overflow-hidden ${

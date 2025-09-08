@@ -7,6 +7,7 @@ import CyberGAI from "./pages/CyberGAI";
 import NotFound from "./pages/NotFound";
 import ScrollProgressIndicator from "./components/ScrollProgressIndicator";
 import VibeChartPage from "@/components/VibeChartPage";
+import ChartGeneratorPage from "@/components/ChartGeneratorPage";
 // import LoginPage from "./pages/LoginPage";
 // import RegisterPage from "./pages/RegisterPage";
 import Auth from "@/components/AuthSystem";
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/" element={<CyberGAI />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="/vibe-chart" element={<VibeChartPage /> } />
+          <Route path="/chart-generator" element={<ChartGeneratorPage /> } />
           
           {/* login and register routes */}
           {/* <Route path="/login" element={<LoginPage />} />

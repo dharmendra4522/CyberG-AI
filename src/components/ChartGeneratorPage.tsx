@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import ReactDOM from "react-dom";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 
 // Apni local files ko yahan import karein
@@ -189,22 +189,24 @@ function ChartGeneratorPage() {
   const excelInputRef = useRef(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation(); // <-- YEH NAYI LINE ADD KAREIN
 
-  const checkAuthAndProceed = (action: () => void) => {
-    const accessToken = localStorage.getItem("accessToken");
-    if (accessToken) {
-      // Agar user logged in hai, to action ko perform karo
+
+ // Is poore function ko replace karein
+const checkAuthAndProceed = (action: () => void) => {
+  const accessToken = localStorage.getItem("accessToken");
+  if (accessToken) {
       action();
-    } else {
-      // Agar user logged in nahi hai, to message dikhao aur redirect karo
-      toast({
-        variant: "destructive",
-        title: "Login required",
-        description: "Please log in to use this feature.",
+  } else {
+      // Naya: Redirect ke saath message aur 'from' path bhejein
+      navigate('/auth', { 
+          state: { 
+              message: "Please log in or create an account to use this feature.",
+              from: location.pathname // Batao ki hum kahan se aaye hain
+          } 
       });
-      setTimeout(() => navigate("/Auth"), 1500);
-    }
-  };
+  }
+};
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];

@@ -8,7 +8,6 @@ import NotFound from "./pages/NotFound";
 import ScrollProgressIndicator from "./components/ScrollProgressIndicator";
 import VibeChartPage from "@/components/VibeChartPage";
 import ChartGeneratorPage from "@/components/ChartGeneratorPage";
-import ProtectedRoute from './components/ProtectedRoute'; // Hamara naya Gatekeeper
 
 import Auth from "@/components/AuthSystem";
 

@@ -185,6 +185,7 @@ const ImportSheetModal = ({ isOpen, onClose }) => {
 // --- Main Page Component (Updated with your theme's classes) ---
 function ChartGeneratorPage() {
   const [prompt, setPrompt] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null); // <-- YEH NAYI LINE ADD KAREIN
   const fileInputRef = useRef(null);
   const excelInputRef = useRef(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -208,13 +209,21 @@ const checkAuthAndProceed = (action: () => void) => {
   }
 };
 
-  const handleFileSelect = (event) => {
-    const file = event.target.files[0];
+  // const handleFileSelect = (event) => {
+  //   const file = event.target.files[0];
+  //   if (file) {
+  //     console.log("Selected file:", file);
+  //     navigate("/vibe-chart", { state: { uploadedFile: file } });
+  //   }
+  // };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (file) {
-      console.log("Selected file:", file);
-      navigate("/vibe-chart", { state: { uploadedFile: file } });
+        console.log("Selected file:", file.name);
+        setSelectedFile(file); // File ko state mein save karein
     }
-  };
+};
 
   const handleUploadButtonClick = () => {
     checkAuthAndProceed(() => {
@@ -237,16 +246,30 @@ const checkAuthAndProceed = (action: () => void) => {
     });
   };
 
-  const handlePromptSubmit = () => {
-    checkAuthAndProceed(() => {
-      // Yahan aap file aur prompt ke saath redirect karne ka logic daal sakte hain
-      console.log("Submitted Prompt:", prompt);
-      toast({
-        title: "Started",
-        description: "Chart generation started!",
-      });
-    });
-  };
+  // const handlePromptSubmit = () => {
+  //   checkAuthAndProceed(() => {
+  //     // Yahan aap file aur prompt ke saath redirect karne ka logic daal sakte hain
+  //     console.log("Submitted Prompt:", prompt);
+  //     toast({
+  //       title: "Started",
+  //       description: "Chart generation started!",
+  //     });
+  //   });
+  // };
+
+  const handleGenerateChart = () => {
+    if (!selectedFile) {
+        alert("Please upload an Excel file first.");
+        return;
+    }
+    if (!prompt) {
+        alert("Please describe the chart you want to create from the file.");
+        return;
+    }
+    console.log("Redirecting with:", { file: selectedFile.name, prompt: prompt });
+    // File aur prompt dono ko VibeChartPage par bhejo
+    navigate('/vibe-chart', { state: { uploadedFile: selectedFile, userPrompt: prompt } });
+};
 
   return (
     <div className="min-h-screen flex justify-center bg-background p-6 pt-20">
@@ -257,13 +280,13 @@ const checkAuthAndProceed = (action: () => void) => {
       <input
         type="file"
         ref={fileInputRef}
-        onChange={handleFileSelect}
+        onChange={handleFileChange}
         className="hidden"
       />
       <input
         type="file"
         ref={excelInputRef}
-        onChange={handleFileSelect}
+        onChange={handleFileChange}
         className="hidden"
         accept=".xlsx, .xls"
       />
@@ -310,6 +333,32 @@ const checkAuthAndProceed = (action: () => void) => {
               text="Paste data"
             />
           </div>
+          
+          {/* File Upload Status */}
+          {selectedFile && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-green-800">File uploaded successfully!</p>
+                  <p className="text-sm text-green-600">{selectedFile.name}</p>
+                </div>
+                <button
+                  onClick={() => setSelectedFile(null)}
+                  className="ml-auto text-green-600 hover:text-green-800"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
+          
           <div className="relative">
             <textarea
               value={prompt}
@@ -318,8 +367,13 @@ const checkAuthAndProceed = (action: () => void) => {
               className="w-full h-28 p-4 pr-16 bg-input text-foreground border rounded-md focus:outline-none focus:ring-2 focus:ring-ring resize-none"
             />
             <button
-              onClick={handlePromptSubmit}
-              className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-foreground text-background rounded-full hover:bg-foreground/80 transition-all duration-200"
+              onClick={handleGenerateChart}
+              disabled={!selectedFile || !prompt.trim()}
+              className={`absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full transition-all duration-200 ${
+                selectedFile && prompt.trim() 
+                  ? 'bg-foreground text-background hover:bg-foreground/80' 
+                  : 'bg-muted text-muted-foreground cursor-not-allowed'
+              }`}
             >
               <SendIcon />
             </button>

@@ -1,7 +1,23 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
+import { Bar as ChartJSBar, Line, Pie, Radar, Bubble, Scatter } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend,
+  PointElement, LineElement, ArcElement, RadialLinearScale, Filler
+} from 'chart.js';
+
+// Import AI service
+import { generateChartFromData } from '../services/aiService';
+
+// Naya: Chart.js ko register karein
+ChartJS.register(
+    CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend,
+    PointElement, LineElement, ArcElement, RadialLinearScale, Filler
+  );
+
 import html2canvas from 'html2canvas';
 import { saveAs } from 'file-saver';
 
@@ -16,7 +32,7 @@ const ExportIcon = () => ( <svg style={{width: '1rem', height: '1rem'}} fill="no
 
 
 // --- Redesigned Modal Component ---
-const ChartDetailModal = ({ isOpen, onClose, chartData }) => {
+const ChartDetailModal = ({ isOpen, onClose, chartConfig }) => {
     const [isResizing, setIsResizing] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [resizeDirection, setResizeDirection] = useState('');
@@ -194,18 +210,8 @@ const ChartDetailModal = ({ isOpen, onClose, chartData }) => {
                         <p style={{ marginBottom: '1rem', fontSize: '0.875rem' }} className="text-muted-foreground">The chart visualizes the weekly schedule...</p>
                     </div>
                     <div style={{ flexGrow: 1, width: '100%', minHeight: 0 }}>
-                        {shouldRenderChart && (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                                    <XAxis dataKey="name" stroke="var(--foreground)" />
-                                    <YAxis stroke="var(--foreground)" />
-                                    <Tooltip contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }} />
-                                    <Bar dataKey="tasks">
-                                        {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+                        {shouldRenderChart && chartConfig && (
+                            <ChartJSBar data={chartConfig.data} options={chartConfig.options} />
                         )}
                     </div>
                 </div>
@@ -251,40 +257,99 @@ const ChartDetailModal = ({ isOpen, onClose, chartData }) => {
 function VibeChartPage() {
     const location = useLocation();
     const uploadedFile = location.state?.uploadedFile;
+    const userPrompt = location.state?.userPrompt;
 
     const [status, setStatus] = useState('processing');
     const [processingSteps, setProcessingSteps] = useState([
-        { id: 1, text: "Drawing chart", completed: false, inProgress: true },
-        { id: 2, text: "Validating JS code and chart data...", completed: false, inProgress: false },
+        { id: 1, text: "Uploading file to AI service...", completed: false, inProgress: true },
+        { id: 2, text: "AI is analyzing your data and generating chart...", completed: false, inProgress: false },
+        { id: 3, text: "Finalizing chart configuration...", completed: false, inProgress: false },
     ]);
-    const [chartData, setChartData] = useState([]);
+    const [chartConfig, setChartConfig] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [error, setError] = useState(null);
+
+    // useEffect(() => {
+    //     const processFile = async () => {
+    //         await new Promise(res => setTimeout(res, 1500));
+    //         setProcessingSteps(prev => prev.map(p => p.id === 1 ? { ...p, completed: true, inProgress: false } : p));
+    //         setProcessingSteps(prev => prev.map(p => p.id === 2 ? { ...p, inProgress: true } : p));
+    //         await new Promise(res => setTimeout(res, 2000));
+    //         setProcessingSteps(prev => prev.map(p => p.id === 2 ? { ...p, completed: true, inProgress: false } : p));
+    //         const finalChartData = [
+    //             { name: 'Mon-Wed', tasks: 4.2, color: '#8b5cf6' },
+    //             { name: 'Thu-Fri', tasks: 4.1, color: '#ec4899' },
+    //             { name: 'Sat-Sun', tasks: 5.8, color: '#3b82f6' },
+    //         ];
+    //         setChartData(finalChartData);
+    //         setStatus('success');
+    //     };
+    //     if (uploadedFile) {
+    //         processFile();
+    //     } else {
+    //         setStatus('idle');
+    //     }
+    // }, [uploadedFile]);
 
     useEffect(() => {
-        const processFile = async () => {
-            await new Promise(res => setTimeout(res, 1500));
-            setProcessingSteps(prev => prev.map(p => p.id === 1 ? { ...p, completed: true, inProgress: false } : p));
-            setProcessingSteps(prev => prev.map(p => p.id === 2 ? { ...p, inProgress: true } : p));
-            await new Promise(res => setTimeout(res, 2000));
-            setProcessingSteps(prev => prev.map(p => p.id === 2 ? { ...p, completed: true, inProgress: false } : p));
-            const finalChartData = [
-                { name: 'Mon-Wed', tasks: 4.2, color: '#8b5cf6' },
-                { name: 'Thu-Fri', tasks: 4.1, color: '#ec4899' },
-                { name: 'Sat-Sun', tasks: 5.8, color: '#3b82f6' },
-            ];
-            setChartData(finalChartData);
-            setStatus('success');
+        const processFileWithAI = async () => {
+            if (!uploadedFile || !userPrompt) {
+                setError("Missing file or prompt. Please go back and try again.");
+                setStatus('error');
+                return;
+            }
+
+            try {
+                // Step 1: Upload file to AI service
+                await new Promise(res => setTimeout(res, 1000));
+                setProcessingSteps(prev => prev.map(p => p.id === 1 ? { ...p, completed: true, inProgress: false } : p));
+                setProcessingSteps(prev => prev.map(p => p.id === 2 ? { ...p, inProgress: true } : p));
+
+                // Step 2: Call AI service
+                console.log("Calling AI service with:", { userPrompt, fileName: uploadedFile.name });
+                const aiResponse = await generateChartFromData(userPrompt, uploadedFile);
+
+                if (!aiResponse.success) {
+                    throw new Error(aiResponse.error || 'AI service failed');
+                }
+
+                setProcessingSteps(prev => prev.map(p => p.id === 2 ? { ...p, completed: true, inProgress: false } : p));
+                setProcessingSteps(prev => prev.map(p => p.id === 3 ? { ...p, inProgress: true } : p));
+
+                // Step 3: Process AI response
+                await new Promise(res => setTimeout(res, 500));
+                setProcessingSteps(prev => prev.map(p => p.id === 3 ? { ...p, completed: true, inProgress: false } : p));
+
+                // Extract chart configuration from AI response
+                const chartSpec = aiResponse.data?.response?.chart_spec || aiResponse.data?.chart_spec;
+                
+                if (!chartSpec) {
+                    throw new Error('Invalid response format from AI service');
+                }
+
+                // Set chart configuration
+                setChartConfig(chartSpec);
+                setStatus('success');
+                console.log("Chart generated successfully:", chartSpec);
+
+            } catch (error) {
+                console.error("Error processing file with AI:", error);
+                setError(error.message || 'Failed to generate chart. Please try again.');
+                setStatus('error');
+            }
         };
-        if (uploadedFile) {
-            processFile();
-        } else {
+    
+        if (uploadedFile && userPrompt) {
+            processFileWithAI();
+        } else if (!uploadedFile && !userPrompt) {
             setStatus('idle');
         }
-    }, [uploadedFile]);
+    }, [uploadedFile, userPrompt]);
+
 
     return (
         <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', padding: '2rem' }}>
-            <ChartDetailModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} chartData={chartData} />
+            <ChartDetailModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} chartConfig={chartConfig} />
             <div style={{ width: '100%', maxWidth: '56rem' }}>
                 <div className="bg-card border rounded-lg shadow-sm" style={{ padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -303,7 +368,35 @@ function VibeChartPage() {
                         ))}
                     </div>
                 )}
-                {status === 'success' && (
+
+                {status === 'error' && (
+                    <div className="bg-card border border-red-200 rounded-lg p-6 shadow-sm">
+                        <div className="flex items-center mb-4">
+                            <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mr-3">
+                                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-semibold text-red-800">Error Generating Chart</h3>
+                        </div>
+                        <p className="text-red-700 mb-4">{error}</p>
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => window.history.back()}
+                                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                            >
+                                Go Back
+                            </button>
+                            <button 
+                                onClick={() => window.location.reload()}
+                                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                            >
+                                Try Again
+                            </button>
+                        </div>
+                    </div>
+                )}
+                {/* {status === 'success' && (
                     <div className="bg-card border rounded-lg shadow-sm" style={{ padding: '1.5rem' }}>
                         <p className="text-muted-foreground" style={{ marginBottom: '1rem' }}>This chart presents a visual timetable showing the weekly schedule.</p>
                         <div className="border rounded-md hover:shadow-lg" style={{ cursor: 'pointer', padding: '1rem', transition: 'box-shadow 0.2s', backgroundImage: 'linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px)', backgroundSize: '20px 20px' }} onClick={() => setIsModalOpen(true)}>
@@ -318,7 +411,41 @@ function VibeChartPage() {
                             </ResponsiveContainer>
                         </div>
                     </div>
-                )}
+                )} */}
+
+{status === 'success' && chartConfig && (
+    <div className="bg-card border rounded-lg p-6 shadow-sm">
+        <div className="mb-4">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Generated Chart</h3>
+            <p className="text-muted-foreground mb-2">
+                <strong>Your request:</strong> "{userPrompt}"
+            </p>
+            <p className="text-muted-foreground">
+                This chart presents a visual representation of the data from your uploaded file.
+            </p>
+        </div>
+        <div className="border rounded-md hover:shadow-lg cursor-pointer transition-shadow" onClick={() => setIsModalOpen(true)}>
+            <div className="h-96 p-4">
+                <ChartJSBar data={chartConfig.data} options={chartConfig.options} />
+            </div>
+        </div>
+        <div className="mt-4 flex gap-3">
+            <button 
+                onClick={() => setIsModalOpen(true)}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+            >
+                View Details
+            </button>
+            <button 
+                onClick={() => window.history.back()}
+                className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90 transition-colors"
+            >
+                Generate Another
+            </button>
+        </div>
+    </div>
+)}
+
                  {status === 'idle' && (
                     <div className="bg-card border rounded-lg shadow-sm text-center" style={{ padding: '4rem', textAlign: 'center' }}>
                         <p className="text-muted-foreground">Please go back to the home page and select a file to generate a chart.</p>

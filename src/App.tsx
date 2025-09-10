@@ -8,8 +8,8 @@ import NotFound from "./pages/NotFound";
 import ScrollProgressIndicator from "./components/ScrollProgressIndicator";
 import VibeChartPage from "@/components/VibeChartPage";
 import ChartGeneratorPage from "@/components/ChartGeneratorPage";
-// import LoginPage from "./pages/LoginPage";
-// import RegisterPage from "./pages/RegisterPage";
+import ProtectedRoute from './components/ProtectedRoute'; // Hamara naya Gatekeeper
+
 import Auth from "@/components/AuthSystem";
 
 
@@ -29,9 +29,7 @@ const App = () => (
           <Route path="/vibe-chart" element={<VibeChartPage /> } />
           <Route path="/chart-generator" element={<ChartGeneratorPage /> } />
           
-          {/* login and register routes */}
-          {/* <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} /> */}
+          
 
           <Route path="/auth" element={<Auth />} />
           
